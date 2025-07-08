@@ -56,8 +56,8 @@ export const getMemories = async (user: Session | null) => {
 				const memoryFull = await supermemory.memories.get(memory.id);
 				return {
 					memory:
+            memoryFull.title ??
 						memoryFull.summary ??
-						memory.title ??
 						memoryFull.content ??
 						"No memory content",
 					id: memory.id,
