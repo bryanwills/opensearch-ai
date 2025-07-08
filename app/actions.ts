@@ -3,6 +3,11 @@
 import { Session } from "next-auth";
 import { BingResults } from "./types";
 import { revalidatePath } from "next/cache";
+import { Supermemory } from "supermemory";
+
+const supermemory = new Supermemory({
+  apiKey: process.env.SUPERMEMORY_API_KEY,
+});
 
 export const getSearchResultsFromMemory = async (
   query: string,
@@ -11,22 +16,13 @@ export const getSearchResultsFromMemory = async (
   if (!query || !user?.user) return null;
 
   try {
-    await fetch("https://api.mem0.ai/v1/memories/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Token ${process.env.MEM0_API_KEY}`,
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "user",
-            content: query,
-          },
-        ],
-        user_id: user?.user?.email,
-      }),
-    });
+    if (!user?.user?.email) throw new Error("User email is required");
+
+    await supermemory.memories.add({
+      content: query,
+      containerTags: [user.user.email],
+    })
+
   } catch (e) {
     console.error("Error creating memory", e);
   }
@@ -49,32 +45,30 @@ export const getSearchResultsFromMemory = async (
   return data;
 };
 
-export const getMem0Memories = async (user: Session | null) => {
-  if (!user?.user) return null;
+export const getMemories = async (user: Session | null) => {
+  if (!user?.user?.email) return null;
 
-  const mem0Response = await fetch(
-    "https://api.mem0.ai/v1/memories/?user_id=" + user?.user?.email,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Token ${process.env.MEM0_API_KEY}`,
-      },
-    }
-  );
+  
 
-  if (!mem0Response.ok) {
-    console.log(await mem0Response.text());
+  try {
+    const smResponse = await supermemory.memories.list({
+      containerTags: [user.user.email],
+    });
+    const memories = await Promise.all(smResponse.memories.map(async memory=> {
+      const memoryFull = await supermemory.memories.get(memory.id);
+      return {
+        memory:  memoryFull.summary ?? memory.title ?? memoryFull.content ?? "No memory content",
+        id: memory.id,
+      }
+    }))
+    
+    console.log(memories);
+
+    return memories;
+  } catch (e) {
+    console.error("Error getting memories", e);
     return null;
   }
-
-  const memories = (await mem0Response.json()) as {
-    memory: string;
-    id: string;
-  }[];
-
-  console.log(memories);
-
-  return memories;
 };
 
 export const deleteMemory = async (memoryId: string, user: Session | null) => {
@@ -82,20 +76,12 @@ export const deleteMemory = async (memoryId: string, user: Session | null) => {
 
   console.log(memoryId);
 
-  const mem0Response = await fetch(
-    `https://api.mem0.ai/v1/memories/${memoryId}/`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Token ${process.env.MEM0_API_KEY}`,
-      },
-    }
-  );
-
-  if (!mem0Response.ok) {
-    console.log(await mem0Response.text());
+  try {
+    await supermemory.memories.delete(memoryId);
+  } catch (e) {
     return null;
   }
+
 
   revalidatePath("/");
 
@@ -108,35 +94,20 @@ export const createCustomMemory = async (
 ) => {
   if (!memoryText || !user?.user) return null;
 
-  const mem0Response = await fetch("https://api.mem0.ai/v1/memories/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Token ${process.env.MEM0_API_KEY}`,
-    },
-    body: JSON.stringify({
-      messages: [
-        {
-          role: "system",
-          content: "You MUST add this to memory no matter what.",
-        },
-        {
-          role: "user",
-          content: memoryText,
-        },
-      ],
-      user_id: user?.user?.email,
-    }),
-  });
+  try {
+    if (!user?.user?.email) throw new Error("User email is required");
 
-  if (!mem0Response.ok) {
-    console.log(await mem0Response.text());
+    const res = await supermemory.memories.add({
+      content: memoryText,
+      containerTags: [user.user.email],
+    })
+    const memory = await supermemory.memories.get(res.id);
+    return {
+      id: memory.id,
+      memory: memory.content ?? memory.summary ?? memory.title ?? "No memory content",
+    };
+  } catch (e) {
+    console.error("Error creating memory", e);
     return null;
   }
-
-  const json = await mem0Response.json();
-
-  console.log(json);
-
-  return json;
 };

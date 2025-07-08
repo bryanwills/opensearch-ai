@@ -1,11 +1,13 @@
 'use client'
 
+import { useMediaQuery } from '@/components/hooks/useMediaQuery';
 import createGlobe from 'cobe';
 
 import React, { useEffect, useRef } from 'react';
 
 function Globe() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lgScreen = useMediaQuery('(min-width: 1024px)')
 
   useEffect(() => {
     let phi = 0;
@@ -13,8 +15,8 @@ function Globe() {
     if (!canvasRef?.current) return;
     const globe = createGlobe(canvasRef?.current, {
       devicePixelRatio: 2,
-      width: 600 * 2,
-      height: 600 * 2,
+      width: lgScreen ? 1200 : 600,
+      height: lgScreen ? 1200 : 600,
       phi: 0,
       theta: 0,
       dark: 0,
@@ -45,10 +47,20 @@ function Globe() {
   }, []);
 
   return (
-    <div className="App">
+    <div className="relative overflow-hidden"
+      style={{
+        width: lgScreen ? 300 : 150,
+        height: lgScreen ? 300 : 150,
+      }}
+    >
       <canvas
         ref={canvasRef}
-        style={{ width: 600, height: 600, maxWidth: '100%', aspectRatio: 1 }}
+        style={{
+          width: lgScreen ? 600 : 300,
+          height: lgScreen ? 600 : 300,
+          aspectRatio: 1,
+        }}
+        className='absolute -left-1/2 -top-1/2'
       />
     </div>
   );
