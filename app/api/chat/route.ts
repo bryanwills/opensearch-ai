@@ -2,12 +2,12 @@ import { BingResults } from '@/app/types';
 import { auth } from '@/server/auth';
 import { createOpenAI } from '@ai-sdk/openai';
 import { CoreMessage, streamText } from 'ai';
+import { Supermemory } from "supermemory";
 
 export const runtime = 'edge';
 
 const openaiApiKey = process.env.OPENAI_API_KEY;
-const mem0ApiKey = process.env.MEM0_API_KEY;
-
+const supermemoryApiKey = process.env.SUPERMEMORY_API_KEY;
 
 export const POST = async (request: Request): Promise<Response> => {
   const body = (await request.json()) as { data: BingResults; input: string };
@@ -18,37 +18,34 @@ export const POST = async (request: Request): Promise<Response> => {
     return new Response('Invalid request', { status: 400 });
   }
 
-  if (!openaiApiKey || !mem0ApiKey) {
+  if (!openaiApiKey || !supermemoryApiKey) {
     console.error('Missing API keys:', {
       openaiApiKey: !!openaiApiKey,
-      mem0ApiKey: !!mem0ApiKey,
+      supermemoryApiKey: !!supermemoryApiKey,
     });
     return new Response('Missing API keys', { status: 500 });
   }  
+
+  if (!user?.user?.email) {
+    return new Response('User email is required', { status: 400 });
+  }
 
   const openai = createOpenAI({
     apiKey: openaiApiKey,
   });
 
-
-  const mem0Response = await fetch('https://api.mem0.ai/v1/memories/search/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Token ${mem0ApiKey}`,
-    },
-    body: JSON.stringify({
-      query: 'What do you know about ' + body.input,
-      user_id: user?.user?.email,
-    }),
+  const supermemory = new Supermemory({
+    apiKey: supermemoryApiKey,
   });
 
-  if (!mem0Response.ok) {
-    console.log(await mem0Response.text());
-    return new Response('Error fetching memories', { status: 500 });
-  }
+  const memoriesResponse = await supermemory.search.execute({
+    q: 'What do you know about ' + body.input,
+    containerTags: [],
+  });
 
-  const memories = (await mem0Response.json()) as { memory: string }[];
+  const memories = memoriesResponse.results.map(mem=>({
+    memory: mem.summary ?? mem.title ?? mem.chunks.map(chunk=>chunk.content).join('\n') ?? "No memory content"
+  }))
 
   console.log(memories);
 
