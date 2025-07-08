@@ -48,7 +48,27 @@ export const getSearchResultsFromMemory = async (
 export const getMemories = async (user: Session | null) => {
   if (!user?.user?.email) return null;
 
+<<<<<<< Updated upstream
   
+=======
+	try {
+		const smResponse = await supermemory.memories.list({
+			containerTags: [user.user.email, "opensearch"],
+		});
+		const memories = await Promise.all(
+			smResponse.memories.map(async (memory) => {
+				const memoryFull = await supermemory.memories.get(memory.id);
+				return {
+					memory:
+						memoryFull.summary ??
+						memory.title ??
+						memoryFull.content ??
+						"No memory content",
+					id: memory.id,
+				};
+			}),
+		);
+>>>>>>> Stashed changes
 
   try {
     const smResponse = await supermemory.memories.list({
@@ -97,6 +117,7 @@ export const createCustomMemory = async (
   try {
     if (!user?.user?.email) throw new Error("User email is required");
 
+<<<<<<< Updated upstream
     const res = await supermemory.memories.add({
       content: memoryText,
       containerTags: [user.user.email],
@@ -110,4 +131,20 @@ export const createCustomMemory = async (
     console.error("Error creating memory", e);
     return null;
   }
+=======
+		const res = await supermemory.memories.add({
+			content: memoryText,
+			containerTags: [user.user.email, "opensearch"],
+		});
+		const memory = await supermemory.memories.get(res.id);
+		return {
+			id: memory.id,
+			memory:
+				memory.content ?? memory.summary ?? memory.title ?? "No memory content",
+		};
+	} catch (e) {
+		console.error("Error creating memory", e);
+		return null;
+	}
+>>>>>>> Stashed changes
 };
