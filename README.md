@@ -4,7 +4,8 @@ A personalised AI search engine that learns about you and your interests as you 
 
 It's like a perplexity / searchGPT clone, but for _you_.
 
-![screenshot](https://opensearch-ai.pages.dev/screenshot.png)
+<img width="1313" alt="image" src="https://github.com/user-attachments/assets/6dd38f8e-a849-425e-a0cf-610586743b92" />
+
 
 ### Powered by
 
