@@ -47,6 +47,7 @@ function ChatPage({ user }: { user: Session | null }) {
 
   const [customUserMemory, setCustomUserMemory] = useState<string | null>(null);
   const [isMemoriesModalOpen, setIsMemoriesModalOpen] = useState(false);
+  const [showMemoryDisclaimer, setShowMemoryDisclaimer] = useState(false);
 
   // React Query hooks
   const { data: userMemories = [], refetch: refetchMemories } = useMemories(user);
@@ -61,6 +62,11 @@ function ChatPage({ user }: { user: Session | null }) {
     createMemoryMutation.mutate(customUserMemory, {
       onSuccess: () => {
         setCustomUserMemory(null);
+        setShowMemoryDisclaimer(true);
+        // Hide disclaimer after 10 seconds
+        setTimeout(() => {
+          setShowMemoryDisclaimer(false);
+        }, 10000);
       },
       onError: (error) => {
         console.error('Error creating memory:', error);
@@ -197,7 +203,12 @@ function ChatPage({ user }: { user: Session | null }) {
 
             <div className='flex gap-4 items-center'>
               {user?.user && (
-                <Credenza open={isMemoriesModalOpen} onOpenChange={setIsMemoriesModalOpen}>
+                <Credenza open={isMemoriesModalOpen} onOpenChange={(open) => {
+                  setIsMemoriesModalOpen(open);
+                  if (!open) {
+                    setShowMemoryDisclaimer(false);
+                  }
+                }}>
                   <CredenzaTrigger asChild>
                     <button
                       onClick={() => {
@@ -215,11 +226,21 @@ function ChatPage({ user }: { user: Session | null }) {
                         Your Memories
                       </CredenzaTitle>
                       <CredenzaDescription>
-                        Information automatically collected about you by mem0.ai
+                        Memories collected from your searches and custom notes
                       </CredenzaDescription>
                     </CredenzaHeader>
                     <CredenzaBody>
                       <ul className="list-disc max-h-96 overflow-y-auto flex flex-col gap-2">
+                        {showMemoryDisclaimer && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-2 text-sm text-blue-700">
+                            <p className="flex items-center gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                              </svg>
+                              Memories may take up to a minute to be fully processed.
+                            </p>
+                          </div>
+                        )}
                         {userMemories?.length === 0 && (
                           <li>
                             Nothing here... Yet! Just start browsing and asking
