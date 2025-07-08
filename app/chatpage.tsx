@@ -48,9 +48,10 @@ function ChatPage({ user }: { user: Session | null }) {
   const [customUserMemory, setCustomUserMemory] = useState<string | null>(null);
   const [isMemoriesModalOpen, setIsMemoriesModalOpen] = useState(false);
   const [showMemoryDisclaimer, setShowMemoryDisclaimer] = useState(false);
+  const [showDeletionDisclaimer, setShowDeletionDisclaimer] = useState(false);
 
   // React Query hooks
-  const { data: userMemories = [], refetch: refetchMemories } = useMemories(user);
+  const { data: userMemories = [], refetch: refetchMemories, isLoading: isLoadingMemories } = useMemories(user);
   const deleteMemoryMutation = useDeleteMemory(user);
   const createMemoryMutation = useCreateMemory(user);
 
@@ -62,6 +63,7 @@ function ChatPage({ user }: { user: Session | null }) {
     createMemoryMutation.mutate(customUserMemory, {
       onSuccess: () => {
         setCustomUserMemory(null);
+        setShowDeletionDisclaimer(false); // Hide deletion disclaimer if showing
         setShowMemoryDisclaimer(true);
         // Hide disclaimer after 10 seconds
         setTimeout(() => {
@@ -75,7 +77,16 @@ function ChatPage({ user }: { user: Session | null }) {
   };
 
   const handleDeleteMemory = (memoryId: string) => {
-    deleteMemoryMutation.mutate(memoryId);
+    deleteMemoryMutation.mutate(memoryId, {
+      onSuccess: () => {
+        setShowMemoryDisclaimer(false); // Hide add disclaimer if showing
+        setShowDeletionDisclaimer(true);
+        // Hide disclaimer after 10 seconds
+        setTimeout(() => {
+          setShowDeletionDisclaimer(false);
+        }, 10000);
+      }
+    });
   };
 
   const fetchSearch = async (
@@ -207,6 +218,7 @@ function ChatPage({ user }: { user: Session | null }) {
                   setIsMemoriesModalOpen(open);
                   if (!open) {
                     setShowMemoryDisclaimer(false);
+                    setShowDeletionDisclaimer(false);
                   }
                 }}>
                   <CredenzaTrigger asChild>
@@ -241,38 +253,54 @@ function ChatPage({ user }: { user: Session | null }) {
                             </p>
                           </div>
                         )}
-                        {userMemories?.length === 0 && (
-                          <li>
+                        {showDeletionDisclaimer && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-2 text-sm text-yellow-700">
+                            <p className="flex items-center gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                              </svg>
+                              Deletions may take up to 30 seconds to process.
+                            </p>
+                          </div>
+                        )}
+                        {isLoadingMemories ? (
+                          <div className="flex items-center justify-center py-8">
+                            <LoadingSpinner />
+                            <span className="ml-2">Loading memories...</span>
+                          </div>
+                        ) : userMemories?.length === 0 ? (
+                          <li className="text-center py-4">
                             Nothing here... Yet! Just start browsing and asking
                             questions. I&apos;ll remember it.
                           </li>
-                        )}
-                        {userMemories?.map((memory) => (
-                          <li
-                            key={memory.id}
-                            className="text-sm border rounded-md p-2 flex gap-2 justify-between"
-                          >
-                            <span>{memory.memory}</span>
-                            <button
-                              onClick={() => handleDeleteMemory(memory.id)}
-                              disabled={deleteMemoryMutation.isPending}
-                              className={deleteMemoryMutation.isPending ? 'opacity-50' : ''}
+                        ) : (
+                          userMemories?.map((memory) => (
+                            <li
+                              key={memory.id}
+                              className="text-sm border rounded-md p-2 flex gap-2 justify-between"
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="size-5"
+                              <span>{memory.memory}</span>
+                              <button
+                                onClick={() => handleDeleteMemory(memory.id)}
+                                disabled={deleteMemoryMutation.isPending}
+                                className={deleteMemoryMutation.isPending ? 'opacity-50' : ''}
                               >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </button>
-                          </li>
-                        ))}
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="size-5"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                            </li>
+                          ))
+                        )}
                         <form
                           onSubmit={handleMemorySubmit}
                           className="flex justify-between items-center gap-2"
@@ -299,9 +327,10 @@ function ChatPage({ user }: { user: Session | null }) {
               )}
               <a
                 href="https://github.com/supermemoryai/opensearch-ai"
-                className="flex max-lg:hidden items-center justify-between gap-4 border-b border-gray-300 pb-6 pt-4 lg:static lg:w-auto lg:border-none lg:bg-transparent lg:p-0"
+                className="flex max-lg:hidden items-center gap-4
+                 py-4 lg:static lg:w-auto"
               >
-                Github{' '}
+                <span>Github</span>
                 <svg
                   viewBox="0 0 256 250"
                   width="20"
