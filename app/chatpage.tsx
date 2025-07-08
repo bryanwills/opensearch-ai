@@ -338,7 +338,7 @@ function ChatPage({ user }: { user: Session | null }) {
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-4 w-full items-center justify-center -mt-20">
+            <div className="flex flex-col gap-4 w-full items-center justify-center -mt-40">
               <Globe />
               <div className="text-4xl md:text-6xl">Open Search GPT</div>
 
